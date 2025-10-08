@@ -2,49 +2,52 @@ pipeline {
     agent any
 
     tools {
-        // The name 'NodeJS-20' must match the name you configured in Jenkins -> Tools
-        nodejs 'NodeJS-20' 
-        // Assumes you have a Maven tool configured in Jenkins
-        maven 'Maven-3.9'
+        // IMPORTANT: Ensure these names match EXACTLY what you have configured
+        // in Manage Jenkins -> Global Tool Configuration.
+        // For example, if your NodeJS tool is named "MyNode", change 'NodeJS' to 'MyNode'.
+        nodejs 'NodeJS' 
+        maven 'Maven'
     }
 
     environment {
-        // Credentials ID for your Tomcat server from Jenkins Credentials
+        // The ID for your Tomcat credentials stored in Jenkins
         TOMCAT_CREDS = credentials('tomcat-credentials') 
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Clones your project from your specific Git repository
+                // Clones your project from the specified Git repository
                 git branch: 'main', url: 'https://github.com/Hemanth1845/CRM-PROJECT.git'
             }
         }
 
         stage('Build Frontend') {
             steps {
-                // Navigate to the frontend directory
                 dir('frontend') {
                     sh 'npm install'
-                    // VITE_APP_API_URL should point to where the backend will be deployed
-                    sh 'npm run build -- --base=./ --define process.env.VITE_APP_API_URL="\'/api\'"'
+                    // Set the API URL to the correct relative path for Tomcat
+                    sh 'npm run build -- --define process.env.VITE_APP_API_URL="\'/crmproject/api\'"'
                 }
             }
         }
 
         stage('Copy Frontend to Backend') {
             steps {
-                // Clean any old frontend files from the backend's static resources
-                deleteDir content: '''backend/CRMApplication/src/main/resources/static/''', followSymlinks: false
-                // Copy the newly built frontend into the backend's static folder
+                // FIXED: Corrected syntax for deleteDir
+                // This step cleans the static resources directory before copying new files
+                deleteDir(dir: 'backend/CRMApplication/src/main/resources/static')
+                
+                // Copy the built frontend files to the Spring Boot static resources folder
+                sh 'mkdir -p backend/CRMApplication/src/main/resources/static'
                 sh 'cp -r frontend/dist/* backend/CRMApplication/src/main/resources/static/'
             }
         }
 
         stage('Build Backend (WAR)') {
             steps {
-                // Navigate to the backend directory and package it as a WAR file
                 dir('backend/CRMApplication') {
+                    // Package the backend application into a WAR file
                     sh 'mvn clean package'
                 }
             }
@@ -52,18 +55,18 @@ pipeline {
 
         stage('Deploy to Tomcat') {
             steps {
-                // Deploy the generated WAR file to Tomcat
+                // Deploy the specifically named WAR file to your Tomcat server
                 // IMPORTANT: Replace 'your-tomcat-ip' with the actual IP address of your Tomcat server
-                deploy adapters: [tomcat9(credentialsId: 'tomcat-credentials', path: '/crm', url: 'http://your-tomcat-ip:8080')],
-                       contextPath: 'crm-app', 
-                       war: 'backend/CRMApplication/target/*.war'
+                deploy adapters: [tomcat9(credentialsId: 'tomcat-credentials', path: '/crmproject', url: 'http://your-tomcat-ip:2030')],
+                       contextPath: 'crmproject', 
+                       war: 'backend/CRMApplication/target/crmproject.war'
             }
         }
     }
 
     post {
         always {
-            // Clean up the workspace after the build
+            // Clean up the Jenkins workspace after the build is complete
             cleanWs()
         }
     }
