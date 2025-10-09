@@ -14,12 +14,11 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
-                        // Use a wildcard for development to accept requests from any origin.
-                        // This is the most reliable way to solve CORS issues locally.
-                        .allowedOrigins("*") 
+                        // This explicitly allows your local frontend development server
+                        .allowedOrigins("http://localhost:4000") 
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
-                        .allowCredentials(false); // Credentials can be false with wildcard origin
+                        .allowCredentials(true);
             }
         };
     }
