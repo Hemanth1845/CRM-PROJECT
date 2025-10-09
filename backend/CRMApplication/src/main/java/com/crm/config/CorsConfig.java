@@ -13,13 +13,15 @@ public class CorsConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                // Allow requests from the frontend's origin
                 registry.addMapping("/api/**")
-                        .allowedOrigins("http://localhost:4000") // Frontend URL
+                        // Use a wildcard for development to accept requests from any origin.
+                        // This is the most reliable way to solve CORS issues locally.
+                        .allowedOrigins("*") 
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*")
-                        .allowCredentials(true);
+                        .allowCredentials(false); // Credentials can be false with wildcard origin
             }
         };
     }
 }
+

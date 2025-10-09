@@ -2,52 +2,56 @@ pipeline {
     agent any
 
     tools {
-        // IMPORTANT: Ensure these names match EXACTLY what you have configured
-        // in Manage Jenkins -> Global Tool Configuration.
-        // For example, if your NodeJS tool is named "MyNode", change 'NodeJS' to 'MyNode'.
-        nodejs 'NodeJS' 
-        maven 'Maven'
+        // IMPORTANT: These names MUST match your Jenkins Global Tool Configuration
+        nodejs 'NodeJS' // e.g., 'NodeJS-20', 'Default-Node'
+        maven 'Maven'   // e.g., 'Maven-3.9', 'Default-Maven'
     }
 
     environment {
-        // The ID for your Tomcat credentials stored in Jenkins
-        TOMCAT_CREDS = credentials('tomcat-credentials') 
+        // The ID of the Tomcat credentials stored in Jenkins
+        TOMCAT_CREDS = 'tomcat-credentials' 
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Clones your project from the specified Git repository
-                git branch: 'main', url: 'https://github.com/Hemanth1845/CRM-PROJECT.git'
+                echo 'Checking out source code from GitHub...'
+                // Updated with your repository URL
+                git url: 'https://github.com/Hemanth1845/CRM-PROJECT.git', branch: 'main'
             }
         }
 
         stage('Build Frontend') {
             steps {
                 dir('frontend') {
+                    echo 'Installing frontend dependencies...'
                     sh 'npm install'
-                    // Set the API URL to the correct relative path for Tomcat
-                    sh 'npm run build -- --define process.env.VITE_APP_API_URL="\'/crmproject/api\'"'
+                    
+                    echo 'Building frontend for production...'
+                    // The API URL is set to a relative path because both frontend and backend
+                    // will be served from the same Tomcat instance.
+                    sh 'npm run build -- --base=./ --define:import.meta.env.VITE_APP_API_URL="\'/crmproject/api\'"'
                 }
             }
         }
 
-        stage('Copy Frontend to Backend') {
+        stage('Prepare Backend') {
             steps {
-                // FIXED: Corrected syntax for deleteDir
-                // This step cleans the static resources directory before copying new files
-                deleteDir(dir: 'backend/CRMApplication/src/main/resources/static')
-                
-                // Copy the built frontend files to the Spring Boot static resources folder
-                sh 'mkdir -p backend/CRMApplication/src/main/resources/static'
-                sh 'cp -r frontend/dist/* backend/CRMApplication/src/main/resources/static/'
+                echo 'Cleaning old frontend build from backend...'
+                // This step ensures no old frontend files are left over
+                dir('backend/CRMApplication/src/main/resources/static') {
+                    deleteDir()
+                }
+
+                echo 'Copying new frontend build to backend...'
+                sh 'cp -R frontend/dist/* backend/CRMApplication/src/main/resources/static/'
             }
         }
 
-        stage('Build Backend (WAR)') {
+        stage('Build Backend WAR') {
             steps {
                 dir('backend/CRMApplication') {
-                    // Package the backend application into a WAR file
+                    echo 'Building Spring Boot WAR file...'
                     sh 'mvn clean package'
                 }
             }
@@ -55,19 +59,30 @@ pipeline {
 
         stage('Deploy to Tomcat') {
             steps {
-                // Deploy the specifically named WAR file to your Tomcat server
-                // IMPORTANT: Replace 'your-tomcat-ip' with the actual IP address of your Tomcat server
-                deploy adapters: [tomcat9(credentialsId: 'tomcat-credentials', path: '/crmproject', url: 'http://your-tomcat-ip:2030')],
-                       contextPath: 'crmproject', 
-                       war: 'backend/CRMApplication/target/crmproject.war'
+                echo 'Deploying WAR to Tomcat...'
+                deploy adapters: [
+                    tomcat9(
+                        credentialsId: TOMCAT_CREDS, 
+                        // IMPORTANT: Replace with your Tomcat server's URL
+                        url: 'http://your-tomcat-ip:8080', 
+                        path: '/crmproject'
+                    )
+                ], 
+                // Jenkins will look for the WAR file with the name 'crmproject.war'
+                war: 'backend/CRMApplication/target/crmproject.war'
             }
         }
     }
 
     post {
         always {
-            // Clean up the Jenkins workspace after the build is complete
-            cleanWs()
+            echo 'Pipeline finished.'
+        }
+        success {
+            echo 'Deployment successful!'
+        }
+        failure {
+            echo 'Deployment failed. Please check the logs.'
         }
     }
 }
