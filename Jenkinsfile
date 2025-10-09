@@ -2,9 +2,10 @@ pipeline {
     agent any
 
     tools {
-        // IMPORTANT: These names MUST match your Jenkins Global Tool Configuration
-        nodejs 'NodeJS' // e.g., 'NodeJS-20', 'Default-Node'
-        maven 'Maven'   // e.g., 'Maven-3.9', 'Default-Maven'
+        // IMPORTANT: Replace these names with your actual tool names from 
+        // Jenkins -> Manage Jenkins -> Tools
+        nodejs 'YOUR_NODEJS_TOOL_NAME' // e.g., 'NodeJS-20', 'Default-Node'
+        maven 'YOUR_MAVEN_TOOL_NAME'   // e.g., 'Maven-3.9', 'Default-Maven'
     }
 
     environment {
@@ -16,7 +17,6 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Checking out source code from GitHub...'
-                // Updated with your repository URL
                 git url: 'https://github.com/Hemanth1845/CRM-PROJECT.git', branch: 'main'
             }
         }
@@ -28,8 +28,7 @@ pipeline {
                     sh 'npm install'
                     
                     echo 'Building frontend for production...'
-                    // The API URL is set to a relative path because both frontend and backend
-                    // will be served from the same Tomcat instance.
+                    // This sets the API URL to a relative path for deployment
                     sh 'npm run build -- --base=./ --define:import.meta.env.VITE_APP_API_URL="\'/crmproject/api\'"'
                 }
             }
@@ -38,7 +37,6 @@ pipeline {
         stage('Prepare Backend') {
             steps {
                 echo 'Cleaning old frontend build from backend...'
-                // This step ensures no old frontend files are left over
                 dir('backend/CRMApplication/src/main/resources/static') {
                     deleteDir()
                 }
@@ -68,7 +66,6 @@ pipeline {
                         path: '/crmproject'
                     )
                 ], 
-                // Jenkins will look for the WAR file with the name 'crmproject.war'
                 war: 'backend/CRMApplication/target/crmproject.war'
             }
         }
