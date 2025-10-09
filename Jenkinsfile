@@ -2,18 +2,13 @@ pipeline {
     agent any
 
     tools {
-        // IMPORTANT: Replace these names with your actual tool names from 
-        // Jenkins -> Manage Jenkins -> Tools
-        nodejs 'YOUR_NODEJS_TOOL_NAME' // e.g., 'NodeJS-20', 'Default-Node'
-        maven 'YOUR_MAVEN_TOOL_NAME'   // e.g., 'Maven-3.9', 'Default-Maven'
-    }
-
-    environment {
-        // The ID of the Tomcat credentials stored in Jenkins
-        TOMCAT_CREDS = 'tomcat-credentials' 
+        // IMPORTANT: Replace these with the names from your Jenkins Global Tool Configuration
+        nodejs 'NodeJS' 
+        maven 'Maven'
     }
 
     stages {
+        // ===== CHECKOUT =====
         stage('Checkout') {
             steps {
                 echo 'Checking out source code from GitHub...'
@@ -21,6 +16,7 @@ pipeline {
             }
         }
 
+        // ===== FRONTEND BUILD =====
         stage('Build Frontend') {
             steps {
                 dir('frontend') {
@@ -28,58 +24,65 @@ pipeline {
                     sh 'npm install'
                     
                     echo 'Building frontend for production...'
-                    // This sets the API URL to a relative path for deployment
-                    sh 'npm run build -- --base=./ --define:import.meta.env.VITE_APP_API_URL="\'/crmproject/api\'"'
+                    // This sets the API URL to point to the backend's context path on Tomcat
+                    sh 'npm run build -- --define:import.meta.env.VITE_APP_API_URL="\'/crmproject/api\'"'
                 }
             }
         }
-
-        stage('Prepare Backend') {
+        
+        // ===== FRONTEND DEPLOY =====
+        stage('Deploy Frontend to Tomcat') {
             steps {
-                echo 'Cleaning old frontend build from backend...'
-                dir('backend/CRMApplication/src/main/resources/static') {
-                    deleteDir()
-                }
-
-                echo 'Copying new frontend build to backend...'
-                sh 'cp -R frontend/dist/* backend/CRMApplication/src/main/resources/static/'
+                echo 'Deploying frontend to Tomcat ROOT...'
+                // NOTE: This uses 'sh' for Linux-based Jenkins agents. 
+                // If your agent is on Windows, replace 'sh' with 'bat' and update paths.
+                sh '''
+                    TOMCAT_WEBAPPS="/path/to/your/tomcat/webapps"
+                    
+                    echo "Cleaning Tomcat ROOT directory..."
+                    rm -rf $TOMCAT_WEBAPPS/ROOT/*
+                    
+                    echo "Copying frontend build to ROOT..."
+                    cp -R frontend/dist/* $TOMCAT_WEBAPPS/ROOT/
+                '''
             }
         }
-
-        stage('Build Backend WAR') {
+        
+        // ===== BACKEND BUILD =====
+        stage('Build Backend') {
             steps {
                 dir('backend/CRMApplication') {
-                    echo 'Building Spring Boot WAR file...'
-                    sh 'mvn clean package'
+                    echo 'Building backend WAR file...'
+                    sh 'mvn clean package -DskipTests'
                 }
             }
         }
-
-        stage('Deploy to Tomcat') {
+        
+        // ===== BACKEND DEPLOY =====
+        stage('Deploy Backend to Tomcat') {
             steps {
-                echo 'Deploying WAR to Tomcat...'
-                deploy adapters: [
-                    tomcat9(
-                        credentialsId: TOMCAT_CREDS, 
-                        // IMPORTANT: Replace with your Tomcat server's URL
-                        url: 'http://your-tomcat-ip:8080', 
-                        path: '/crmproject'
-                    )
-                ], 
-                war: 'backend/CRMApplication/target/crmproject.war'
+                echo 'Deploying backend WAR file to Tomcat...'
+                sh '''
+                    TOMCAT_WEBAPPS="/path/to/your/tomcat/webapps"
+                    WAR_FILE="backend/CRMApplication/target/crmproject.war"
+                    
+                    echo "Removing old backend deployment..."
+                    rm -f $TOMCAT_WEBAPPS/crmproject.war
+                    rm -rf $TOMCAT_WEBAPPS/crmproject
+                    
+                    echo "Copying new backend WAR file..."
+                    cp $WAR_FILE $TOMCAT_WEBAPPS/
+                '''
             }
         }
     }
 
     post {
-        always {
-            echo 'Pipeline finished.'
-        }
         success {
-            echo 'Deployment successful!'
+            echo "Pipeline completed successfully."
         }
         failure {
-            echo 'Deployment failed. Please check the logs.'
+            echo "Pipeline failed. Please check the logs."
         }
     }
 }
