@@ -2,8 +2,9 @@ pipeline {
     agent any
 
     tools {
-        // IMPORTANT: Replace these with the names from your Jenkins Global Tool Configuration
-        maven 'MAVEN'
+        // IMPORTANT: Replace these with your tool names from Jenkins -> Manage Jenkins -> Tools
+        
+        maven 'Maven'
     }
 
     stages {
@@ -20,11 +21,12 @@ pipeline {
             steps {
                 dir('frontend') {
                     echo 'Installing frontend dependencies...'
-                    sh 'npm install'
+                    // Use 'bat' for Windows
+                    bat 'npm install'
                     
                     echo 'Building frontend for production...'
-                    // This sets the API URL to point to the backend's context path on Tomcat
-                    sh 'npm run build -- --define:import.meta.env.VITE_APP_API_URL="\'/crmproject/api\'"'
+                    // Use 'bat' and adjust the command for Windows
+                    bat 'npm run build -- --define:import.meta.env.VITE_APP_API_URL="\\"/crmproject/api\\""'
                 }
             }
         }
@@ -33,16 +35,18 @@ pipeline {
         stage('Deploy Frontend to Tomcat') {
             steps {
                 echo 'Deploying frontend to Tomcat ROOT...'
-                // NOTE: This uses 'sh' for Linux-based Jenkins agents. 
-                // If your agent is on Windows, replace 'sh' with 'bat' and update paths.
-                sh '''
-                    TOMCAT_WEBAPPS="/path/to/your/tomcat/webapps"
+                // Use 'bat' for Windows commands and paths
+                bat '''
+                    set "TOMCAT_WEBAPPS=C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1\\webapps"
                     
                     echo "Cleaning Tomcat ROOT directory..."
-                    rm -rf $TOMCAT_WEBAPPS/ROOT/*
+                    if exist "%TOMCAT_WEBAPPS%\\ROOT" (
+                        rmdir /S /Q "%TOMCAT_WEBAPPS%\\ROOT"
+                        mkdir "%TOMCAT_WEBAPPS%\\ROOT"
+                    )
                     
                     echo "Copying frontend build to ROOT..."
-                    cp -R frontend/dist/* $TOMCAT_WEBAPPS/ROOT/
+                    xcopy /E /I /Y "frontend\\dist\\*" "%TOMCAT_WEBAPPS%\\ROOT\\"
                 '''
             }
         }
@@ -52,7 +56,8 @@ pipeline {
             steps {
                 dir('backend/CRMApplication') {
                     echo 'Building backend WAR file...'
-                    sh 'mvn clean package -DskipTests'
+                    // Use 'bat' for Windows
+                    bat 'mvn clean package -DskipTests'
                 }
             }
         }
@@ -61,16 +66,21 @@ pipeline {
         stage('Deploy Backend to Tomcat') {
             steps {
                 echo 'Deploying backend WAR file to Tomcat...'
-                sh '''
-                    TOMCAT_WEBAPPS="/path/to/your/tomcat/webapps"
-                    WAR_FILE="backend/CRMApplication/target/crmproject.war"
+                // Use 'bat' for Windows commands and paths
+                bat '''
+                    set "TOMCAT_WEBAPPS=C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1\\webapps"
+                    set "WAR_FILE=backend\\CRMApplication\\target\\crmproject.war"
                     
                     echo "Removing old backend deployment..."
-                    rm -f $TOMCAT_WEBAPPS/crmproject.war
-                    rm -rf $TOMCAT_WEBAPPS/crmproject
+                    if exist "%TOMCAT_WEBAPPS%\\crmproject.war" (
+                        del "%TOMCAT_WEBAPPS%\\crmproject.war"
+                    )
+                    if exist "%TOMCAT_WEBAPPS%\\crmproject" (
+                        rmdir /S /Q "%TOMCAT_WEBAPPS%\\crmproject"
+                    )
                     
                     echo "Copying new backend WAR file..."
-                    cp $WAR_FILE $TOMCAT_WEBAPPS/
+                    copy "%WAR_FILE%" "%TOMCAT_WEBAPPS%\\"
                 '''
             }
         }
