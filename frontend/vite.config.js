@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   // This 'base' property is ESSENTIAL for the Tomcat deployment to work.
-  base: '/crm-frontend/',
+  // base: '/crm-frontend/',
   server:{
     port:4000,
   }
