@@ -27,11 +27,9 @@ pipeline {
                 bat '''
                     echo Deploying Frontend to Tomcat...
                     if exist "%TOMCAT_PATH%\\webapps\\crm-frontend" (
-                        rem CORRECTED PATH: Now uses crm-frontend with a hyphen
                         rmdir /S /Q "%TOMCAT_PATH%\\webapps\\crm-frontend"
                     )
                     mkdir "%TOMCAT_PATH%\\webapps\\crm-frontend"
-                    rem CORRECTED PATH: Now uses crm-frontend with a hyphen
                     xcopy /E /I /Y frontend\\dist\\* "%TOMCAT_PATH%\\webapps\\crm-frontend"
                 '''
             }
@@ -52,10 +50,12 @@ pipeline {
             steps {
                 bat '''
                     echo Deploying Backend to Tomcat...
-                    if exist "%TOMCAT_PATH%\\webapps\\CRMApplication.war" (
-                        del "%TOMCAT_PATH%\\webapps\\CRMApplication.war"
+                    rem CORRECTED FILENAME: Now looks for crmproject.war
+                    if exist "%TOMCAT_PATH%\\webapps\\crmproject.war" (
+                        del "%TOMCAT_PATH%\\webapps\\crmproject.war"
                     )
-                    copy backend\\CRMApplication\\target\\CRMApplication.war "%TOMCAT_PATH%\\webapps\\CRMApplication.war"
+                    rem CORRECTED FILENAME: Now copies the correct crmproject.war
+                    copy backend\\CRMApplication\\target\\crmproject.war "%TOMCAT_PATH%\\webapps\\crmproject.war"
                 '''
             }
         }
