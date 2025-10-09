@@ -24,10 +24,10 @@ pipeline {
                 bat '''
                     echo Deploying Frontend to Tomcat...
                     if exist "%TOMCAT_PATH%\\webapps\\crm-frontend" (
-                        rmdir /S /Q "%TOMCAT_PATH%\\webapps\\crm-frontend"
+                        rmdir /S /Q "%TOMCAT_PATH%\\webapps\\crmfrontend"
                     )
                     mkdir "%TOMCAT_PATH%\\webapps\\crm-frontend"
-                    xcopy /E /I /Y frontend\\dist\\* "%TOMCAT_PATH%\\webapps\\crm-frontend"
+                    xcopy /E /I /Y frontend\\dist\\* "%TOMCAT_PATH%\\webapps\\crmfrontend"
                 '''
             }
         }
