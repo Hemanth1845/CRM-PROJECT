@@ -1,11 +1,7 @@
 pipeline {
     agent any
 
-    tools {
-        // IMPORTANT: Replace these with your tool names from Jenkins -> Manage Jenkins -> Tools
-        
-        maven 'MAVEN'
-    }
+    // No 'tools' section is needed if Maven and Node are in the system's PATH on the Jenkins server
 
     stages {
         // ===== CHECKOUT =====
@@ -21,12 +17,12 @@ pipeline {
             steps {
                 dir('frontend') {
                     echo 'Installing frontend dependencies...'
-                    // Use 'bat' for Windows
                     bat 'npm install'
                     
                     echo 'Building frontend for production...'
-                    // Use 'bat' and adjust the command for Windows
-                    bat 'npm run build -- --define:import.meta.env.VITE_APP_API_URL="\\"/crmproject/api\\""'
+                    // This command injects the correct relative API path for the backend
+                    // It assumes both frontend and backend are on the same Tomcat server
+                    bat 'npm run build -- --define "import.meta.env.VITE_APP_API_URL=\\"/CRMApplication/api\\""'
                 }
             }
         }
@@ -34,19 +30,20 @@ pipeline {
         // ===== FRONTEND DEPLOY =====
         stage('Deploy Frontend to Tomcat') {
             steps {
-                echo 'Deploying frontend to Tomcat ROOT...'
-                // Use 'bat' for Windows commands and paths
+                echo 'Deploying frontend to Tomcat...'
                 bat '''
                     set "TOMCAT_WEBAPPS=C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1\\webapps"
-                    
-                    echo "Cleaning Tomcat ROOT directory..."
-                    if exist "%TOMCAT_WEBAPPS%\\ROOT" (
-                        rmdir /S /Q "%TOMCAT_WEBAPPS%\\ROOT"
-                        mkdir "%TOMCAT_WEBAPPS%\\ROOT"
+
+                    echo "Cleaning old frontend deployment..."
+                    if exist "%TOMCAT_WEBAPPS%\\crm-project" (
+                        rmdir /S /Q "%TOMCAT_WEBAPPS%\\crm-project"
                     )
+
+                    echo "Creating new frontend directory..."
+                    mkdir "%TOMCAT_WEBAPPS%\\crm-project"
                     
-                    echo "Copying frontend build to ROOT..."
-                    xcopy /E /I /Y "frontend\\dist\\*" "%TOMCAT_WEBAPPS%\\ROOT\\"
+                    echo "Copying frontend build files..."
+                    xcopy /E /I /Y "frontend\\dist\\*" "%TOMCAT_WEBAPPS%\\crm-project\\"
                 '''
             }
         }
@@ -56,7 +53,6 @@ pipeline {
             steps {
                 dir('backend/CRMApplication') {
                     echo 'Building backend WAR file...'
-                    // Use 'bat' for Windows
                     bat 'mvn clean package -DskipTests'
                 }
             }
@@ -66,17 +62,16 @@ pipeline {
         stage('Deploy Backend to Tomcat') {
             steps {
                 echo 'Deploying backend WAR file to Tomcat...'
-                // Use 'bat' for Windows commands and paths
                 bat '''
                     set "TOMCAT_WEBAPPS=C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1\\webapps"
-                    set "WAR_FILE=backend\\CRMApplication\\target\\crmproject.war"
+                    set "WAR_FILE=backend\\CRMApplication\\target\\CRMApplication.war"
                     
                     echo "Removing old backend deployment..."
-                    if exist "%TOMCAT_WEBAPPS%\\crmproject.war" (
-                        del "%TOMCAT_WEBAPPS%\\crmproject.war"
+                    if exist "%TOMCAT_WEBAPPS%\\CRMApplication.war" (
+                        del "%TOMCAT_WEBAPPS%\\CRMApplication.war"
                     )
-                    if exist "%TOMCAT_WEBAPPS%\\crmproject" (
-                        rmdir /S /Q "%TOMCAT_WEBAPPS%\\crmproject"
+                    if exist "%TOMCAT_WEBAPPS%\\CRMApplication" (
+                        rmdir /S /Q "%TOMCAT_WEBAPPS%\\CRMApplication"
                     )
                     
                     echo "Copying new backend WAR file..."
