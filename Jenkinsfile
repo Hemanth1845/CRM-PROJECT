@@ -2,71 +2,66 @@ pipeline {
     agent any
 
     environment {
-        // Set paths as per your local setup
-        MAVEN_HOME = "C:\\Program Files\\Apache\\maven-3.9.6"
-        JAVA_HOME = "C:\\Program Files\\Java\\jdk-21"
-        TOMCAT_HOME = "C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1"
-        WAR_NAME = "CRMApplication.war"
+        // Paths
+        MAVEN_HOME = 'C:\\Users\\heman\\OneDrive\\Pictures\\Documents\\software solutions\\apache-maven-3.9.11-bin\\apache-maven-3.9.11'
+        TOMCAT_PATH = 'C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1'
     }
 
     stages {
 
-        stage('Checkout Code') {
-            steps {
-                echo 'Cloning repository...'
-                git branch: 'main', url: 'https://github.com/Hemanth1845/CRM-PROJECT.git'
-            }
-        }
-
+        // ===== FRONTEND BUILD =====
         stage('Build Frontend') {
             steps {
                 dir('frontend') {
-                    echo 'Installing frontend dependencies...'
                     bat 'npm install'
-                    echo 'Building frontend...'
                     bat 'npm run build'
                 }
             }
         }
 
+        // ===== FRONTEND DEPLOY =====
+        stage('Deploy Frontend to Tomcat') {
+            steps {
+                bat '''
+                    echo Deploying Frontend to Tomcat...
+                    if exist "%TOMCAT_PATH%\\webapps\\crm-frontend" (
+                        rmdir /S /Q "%TOMCAT_PATH%\\webapps\\crm-frontend"
+                    )
+                    mkdir "%TOMCAT_PATH%\\webapps\\crm-frontend"
+                    xcopy /E /I /Y frontend\\dist\\* "%TOMCAT_PATH%\\webapps\\crm-frontend"
+                '''
+            }
+        }
+
+        // ===== BACKEND BUILD =====
         stage('Build Backend') {
             steps {
                 dir('backend') {
-                    echo 'Building Spring Boot project using Maven...'
-                    bat "\"${MAVEN_HOME}\\bin\\mvn.cmd\" clean package -DskipTests"
+                    bat '"%MAVEN_HOME%\\bin\\mvn" clean package -DskipTests'
                 }
             }
         }
 
-        stage('Deploy to Tomcat') {
+        // ===== BACKEND DEPLOY =====
+        stage('Deploy Backend to Tomcat') {
             steps {
-                echo 'Deploying WAR file to Tomcat...'
-
-                // Delete old WAR and folder
-                bat """
-                del /Q "${TOMCAT_HOME}\\webapps\\${WAR_NAME}"
-                rmdir /S /Q "${TOMCAT_HOME}\\webapps\\CRMApplication"
-                """
-
-                // Copy new WAR
-                bat "copy backend\\target\\${WAR_NAME} \"${TOMCAT_HOME}\\webapps\\${WAR_NAME}\""
-
-                // Restart Tomcat service
-                echo 'Restarting Tomcat...'
-                bat """
-                net stop Tomcat10
-                net start Tomcat10
-                """
+                bat '''
+                    echo Deploying Backend to Tomcat...
+                    if exist "%TOMCAT_PATH%\\webapps\\crm-backend.war" (
+                        del "%TOMCAT_PATH%\\webapps\\crm-backend.war"
+                    )
+                    copy backend\\target\\*.war "%TOMCAT_PATH%\\webapps\\crm-backend.war"
+                '''
             }
         }
     }
 
     post {
         success {
-            echo '✅ Deployment successful! CRM Application is now live on Tomcat.'
+            echo "✅ CRM Project pipeline completed successfully."
         }
         failure {
-            echo '❌ Deployment failed! Check Jenkins logs for details.'
+            echo "❌ CRM Project pipeline failed."
         }
     }
 }
