@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        // Paths
         MAVEN_HOME = 'C:\\Users\\heman\\OneDrive\\Pictures\\Documents\\software solutions\\apache-maven-3.9.11-bin\\apache-maven-3.9.11'
         TOMCAT_PATH = 'C:\\Program Files\\Apache Software Foundation\\Tomcat 10.1'
     }
@@ -36,7 +35,7 @@ pipeline {
         // ===== BACKEND BUILD =====
         stage('Build Backend') {
             steps {
-                dir('backend') {
+                dir('backend/CRMApplication') {
                     bat '"%MAVEN_HOME%\\bin\\mvn" clean package -DskipTests'
                 }
             }
@@ -50,7 +49,7 @@ pipeline {
                     if exist "%TOMCAT_PATH%\\webapps\\crm-backend.war" (
                         del "%TOMCAT_PATH%\\webapps\\crm-backend.war"
                     )
-                    copy backend\\target\\*.war "%TOMCAT_PATH%\\webapps\\crm-backend.war"
+                    copy backend\\CRMApplication\\target\\*.war "%TOMCAT_PATH%\\webapps\\crm-backend.war"
                 '''
             }
         }
