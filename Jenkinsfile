@@ -46,10 +46,10 @@ pipeline {
             steps {
                 bat '''
                     echo Deploying Backend to Tomcat...
-                    if exist "%TOMCAT_PATH%\\webapps\\crm-backend.war" (
-                        del "%TOMCAT_PATH%\\webapps\\crm-backend.war"
+                    if exist "%TOMCAT_PATH%\\webapps\\CRMApplication.war" (
+                        del "%TOMCAT_PATH%\\webapps\\CRMApplication.war"
                     )
-                    copy backend\\CRMApplication\\target\\*.war "%TOMCAT_PATH%\\webapps\\crm-backend.war"
+                    copy backend\\CRMApplication\\target\\*.war "%TOMCAT_PATH%\\webapps\\CRMApplication.war"
                 '''
             }
         }
