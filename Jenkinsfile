@@ -3,7 +3,6 @@ pipeline {
 
     tools {
         // IMPORTANT: Replace these with the names from your Jenkins Global Tool Configuration
-        nodejs 'NodeJS' 
         maven 'MAVEN'
     }
 
